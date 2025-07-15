@@ -550,13 +550,15 @@
                 this.isDrawing = false;
                 this.stageFailed = false;
                 
+                // 카메라 초기화 - 시작점(12시 방향)을 화면 중앙에 배치
                 this.cameraOffsetX = 0;
                 this.cameraOffsetY = 0;
                 
-                if (this.radius > Math.min(this.canvas.width, this.canvas.height) / 2) {
+                // 원이 화면보다 큰 경우 시작점이 보이도록 카메라 조정
+                if (this.outerGuideRadius * 2 > Math.min(this.canvas.width, this.canvas.height) * 0.8) {
                     const startPointY = this.centerY - this.radius;
-                    if (startPointY < 50) {
-                        this.cameraOffsetY = startPointY - 50;
+                    if (startPointY < 100) {
+                        this.cameraOffsetY = startPointY - this.canvas.height / 2;
                     }
                 }
                 
@@ -604,7 +606,7 @@
                 
                 if (this.isDrawing) {
                     this.addPoint(this.currentMouseX, this.currentMouseY);
-                    this.updateCamera();
+                    // 카메라 업데이트는 addPoint 내부에서 처리됨
                 }
             }
 
@@ -639,7 +641,14 @@
                     Math.pow(adjustedY - this.centerY, 2)
                 );
                 
-                if (distanceFromCenter < this.dangerRadius || distanceFromCenter > this.outerGuideRadius) {
+                // 위험 구역 체크 전에 카메라 업데이트
+                this.updateCamera();
+                
+                // 더 관대한 허용 범위 (모바일에서 터치 정확도 고려)
+                const tolerance = currentPlatform === 'mobile' ? 15 : 10;
+                
+                if (distanceFromCenter < this.dangerRadius - tolerance || 
+                    distanceFromCenter > this.outerGuideRadius + tolerance) {
                     this.failStage();
                     return;
                 }
@@ -649,27 +658,34 @@
             }
 
             updateCamera() {
-                if (this.radius > Math.min(this.canvas.width, this.canvas.height) / 2) {
-                    const margin = 100;
-                    const targetOffsetX = this.centerX - this.currentMouseX;
-                    const targetOffsetY = this.centerY - this.currentMouseY;
+                // 원이 화면보다 큰 경우에만 카메라 이동
+                if (this.outerGuideRadius * 2 > Math.min(this.canvas.width, this.canvas.height) * 0.8) {
+                    const margin = 150; // 화면 가장자리 여유 공간
                     
+                    // 커서 위치를 기준으로 카메라 중심 계산
+                    let targetCameraX = this.currentMouseX - this.canvas.width / 2;
+                    let targetCameraY = this.currentMouseY - this.canvas.height / 2;
+                    
+                    // 원의 경계 계산
                     const circleLeft = this.centerX - this.outerGuideRadius;
                     const circleRight = this.centerX + this.outerGuideRadius;
                     const circleTop = this.centerY - this.outerGuideRadius;
                     const circleBottom = this.centerY + this.outerGuideRadius;
                     
-                    const maxOffsetX = Math.max(0, circleRight - this.canvas.width + margin);
-                    const minOffsetX = Math.min(0, circleLeft - margin);
-                    const maxOffsetY = Math.max(0, circleBottom - this.canvas.height + margin);
-                    const minOffsetY = Math.min(0, circleTop - margin);
+                    // 카메라가 원 밖으로 나가지 않도록 제한
+                    const maxCameraX = circleRight - this.canvas.width + margin;
+                    const minCameraX = circleLeft - margin;
+                    const maxCameraY = circleBottom - this.canvas.height + margin;
+                    const minCameraY = circleTop - margin;
                     
-                    const smoothFactor = 0.1;
-                    const newOffsetX = this.cameraOffsetX + (targetOffsetX - this.cameraOffsetX) * smoothFactor;
-                    const newOffsetY = this.cameraOffsetY + (targetOffsetY - this.cameraOffsetY) * smoothFactor;
+                    // 카메라 범위 제한
+                    targetCameraX = Math.max(minCameraX, Math.min(maxCameraX, targetCameraX));
+                    targetCameraY = Math.max(minCameraY, Math.min(maxCameraY, targetCameraY));
                     
-                    this.cameraOffsetX = Math.max(minOffsetX, Math.min(maxOffsetX, newOffsetX));
-                    this.cameraOffsetY = Math.max(minOffsetY, Math.min(maxOffsetY, newOffsetY));
+                    // 부드러운 카메라 이동 (더 빠른 추적)
+                    const smoothFactor = 0.15;
+                    this.cameraOffsetX += (targetCameraX - this.cameraOffsetX) * smoothFactor;
+                    this.cameraOffsetY += (targetCameraY - this.cameraOffsetY) * smoothFactor;
                 }
             }
 
