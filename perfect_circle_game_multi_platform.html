@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Perfect Circle Drawing Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            overflow: hidden;
+            height: 100vh;
+            user-select: none;
+        }
+
+        .platform-selection {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            z-index: 100;
+        }
+
+        .platform-selection h1 {
+            font-size: 3.5rem;
+            margin-bottom: 1rem;
+            text-align: center;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes glow {
+            from { text-shadow: 2px 2px 4px rgba(0,0,0,0.5), 0 0 20px rgba(255,255,255,0.2); }
+            to { text-shadow: 2px 2px 4px rgba(0,0,0,0.5), 0 0 30px rgba(255,255,255,0.4); }
+        }
+
+        .platform-selection p {
+            font-size: 1.2rem;
+            margin-bottom: 3rem;
+            text-align: center;
+            opacity: 0.9;
+        }
+
+        .platform-buttons {
+            display: flex;
+            gap: 2rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .platform-button {
+            background: rgba(255,255,255,0.1);
+            border: 2px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 2rem 3rem;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 1.2rem;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+            min-width: 200px;
+        }
+
+        .platform-button:hover {
+            background: rgba(255,255,255,0.2);
+            border-color: rgba(255,255,255,0.5);
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .platform-icon {
+            font-size: 3rem;
+        }
+
+        .platform-name {
+            font-size: 1.5rem;
+        }
+
+        .platform-description {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            text-align: center;
+        }
+
+        .game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            display: none;
+        }
+
+        .game-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            cursor: none;
+            background: #f0f8ff;
+        }
+
+        .ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .game-info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-size: 18px;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 10px;
+            pointer-events: all;
+        }
+
+        .timer {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: white;
+            font-size: 24px;
+            background: rgba(255,0,0,0.8);
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+
+        .cursor {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            pointer-events: none;
+            z-index: 20;
+            color: #ff4444;
+            font-size: 20px;
+            font-weight: bold;
+            transform: translate(-50%, -50%);
+            display: none;
+        }
+
+        .mobile-cursor {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            pointer-events: none;
+            z-index: 20;
+            background: rgba(255, 68, 68, 0.8);
+            border: 2px solid #ff4444;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            display: none;
+        }
+
+        .message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            z-index: 30;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .message.success {
+            color: #00ff00;
+        }
+
+        .message.fail {
+            color: #ff0000;
+        }
+
+        .scoreboard {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255,255,255,0.95);
+            padding: 30px;
+            border-radius: 20px;
+            text-align: center;
+            min-width: 400px;
+            z-index: 40;
+            display: none;
+        }
+
+        .scoreboard h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 32px;
+        }
+
+        .score-display {
+            font-size: 24px;
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        .leaderboard {
+            margin: 20px 0;
+            text-align: left;
+        }
+
+        .leaderboard-entry {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .name-input {
+            margin: 20px 0;
+        }
+
+        .name-input input {
+            padding: 10px;
+            font-size: 16px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            width: 200px;
+        }
+
+        .button-container {
+            margin-top: 20px;
+        }
+
+        .game-button {
+            padding: 12px 24px;
+            font-size: 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 0 10px;
+            transition: all 0.3s;
+        }
+
+        .next-button {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .next-button:hover {
+            background: #45a049;
+        }
+
+        .exit-button {
+            background: #f44336;
+            color: white;
+        }
+
+        .exit-button:hover {
+            background: #da190b;
+        }
+
+        .back-button {
+            background: #2196F3;
+            color: white;
+        }
+
+        .back-button:hover {
+            background: #1976D2;
+        }
+
+        .start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            z-index: 50;
+            display: none;
+        }
+
+        .start-screen h1 {
+            font-size: 48px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .start-screen p {
+            font-size: 18px;
+            margin-bottom: 10px;
+            text-align: center;
+            max-width: 600px;
+        }
+
+        .start-button {
+            padding: 15px 30px;
+            font-size: 20px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            margin-top: 30px;
+        }
+
+        .start-button:hover {
+            background: #45a049;
+        }
+
+        @media (max-width: 768px) {
+            .platform-buttons {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .platform-button {
+                min-width: 250px;
+                padding: 1.5rem 2rem;
+            }
+
+            .platform-selection h1 {
+                font-size: 2.5rem;
+            }
+
+            .game-info {
+                font-size: 14px;
+                padding: 10px;
+            }
+
+            .timer {
+                font-size: 20px;
+                padding: 8px 16px;
+            }
+
+            .message {
+                font-size: 36px;
+            }
+
+            .scoreboard {
+                min-width: 90%;
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="platform-selection" id="platformSelection">
+        <h1>🎯 Perfect Circle Drawing Game</h1>
+        <p>Choose your platform to get the best experience</p>
+        
+        <div class="platform-buttons">
+            <div class="platform-button" onclick="selectPlatform('desktop')">
+                <div class="platform-icon">🖥️</div>
+                <div class="platform-name">Desktop</div>
+                <div class="platform-description">Windows / Mac / Linux<br>Mouse Controls</div>
+            </div>
+            
+            <div class="platform-button" onclick="selectPlatform('mobile')">
+                <div class="platform-icon">📱</div>
+                <div class="platform-name">Mobile</div>
+                <div class="platform-description">iOS / Android<br>Touch Controls</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="game-container" id="gameContainer">
+        <canvas class="game-canvas" id="gameCanvas"></canvas>
+        
+        <div class="ui-overlay">
+            <div class="game-info">
+                <div>Stage: <span id="stageDisplay">1</span></div>
+                <div>Diameter: <span id="diameterDisplay">1</span> cm</div>
+                <div>Score: <span id="scoreDisplay">0</span></div>
+                <div>Platform: <span id="platformDisplay">Desktop</span></div>
+            </div>
+            
+            <div class="timer" id="timer">30</div>
+            
+            <div class="cursor" id="cursor">+</div>
+            <div class="mobile-cursor" id="mobileCursor"></div>
+            
+            <div class="message" id="message"></div>
+        </div>
+
+        <div class="scoreboard" id="scoreboard">
+            <h2>SCOREBOARD</h2>
+            <div class="score-display">
+                Stage <span id="finalStage">1</span> - Your Score: <span id="finalScore">0</span>
+            </div>
+            <div class="leaderboard" id="leaderboard"></div>
+            <div class="name-input" id="nameInput" style="display: none;">
+                <p>Congratulations! You made it to the top 10!</p>
+                <input type="text" id="playerName" placeholder="Enter your name" maxlength="10">
+                <button onclick="saveName()">Save</button>
+            </div>
+            <div class="button-container">
+                <button class="game-button back-button" onclick="backToPlatformSelection()">BACK</button>
+                <button class="game-button exit-button" onclick="exitGame()">EXIT</button>
+                <button class="game-button next-button" onclick="nextStage()">NEXT</button>
+            </div>
+        </div>
+
+        <div class="start-screen" id="startScreen">
+            <h1 id="startTitle">🎯 Perfect Circle Drawing Game</h1>
+            <p>Draw perfect circles to earn points!</p>
+            <p id="controlInstruction">• Start from the top (12 o'clock position)</p>
+            <p>• Draw a complete 360° circle</p>
+            <p>• Perfect circle = 10,000 points</p>
+            <p>• Avoid the red danger zone (inner 1cm)</p>
+            <p>• 30 seconds per stage</p>
+            <p>• Each stage increases diameter by 1cm</p>
+            <button class="start-button" onclick="startGame()">START GAME</button>
+            <button class="start-button back-button" onclick="backToPlatformSelection()" style="margin-left: 20px;">BACK</button>
+        </div>
+    </div>
+
+    <script>
+        let game;
+        let currentPlatform = 'desktop';
+
+        function selectPlatform(platform) {
+            currentPlatform = platform;
+            document.getElementById('platformSelection').style.display = 'none';
+            document.getElementById('gameContainer').style.display = 'block';
+            document.getElementById('startScreen').style.display = 'flex';
+            
+            document.getElementById('platformDisplay').textContent = platform === 'desktop' ? 'Desktop' : 'Mobile';
+            
+            const controlInstruction = document.getElementById('controlInstruction');
+            if (platform === 'mobile') {
+                controlInstruction.textContent = '• Touch and drag from the top (12 o\'clock position)';
+            } else {
+                controlInstruction.textContent = '• Click and drag from the top (12 o\'clock position)';
+            }
+            
+            game = new PerfectCircleGame();
+        }
+
+        function backToPlatformSelection() {
+            document.getElementById('gameContainer').style.display = 'none';
+            document.getElementById('startScreen').style.display = 'none';
+            document.getElementById('scoreboard').style.display = 'none';
+            document.getElementById('platformSelection').style.display = 'flex';
+            
+            if (game) {
+                game.stopTimer();
+            }
+        }
+
+        function startGame() {
+            if (game) {
+                game.start();
+            }
+        }
+
+        function nextStage() {
+            if (game) {
+                game.nextStage();
+            }
+        }
+
+        function exitGame() {
+            if (game) {
+                game.exitGame();
+            }
+        }
+
+        function saveName() {
+            if (game) {
+                game.saveName();
+            }
+        }
+
+        class PerfectCircleGame {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.cursor = document.getElementById('cursor');
+                this.mobileCursor = document.getElementById('mobileCursor');
+                
+                this.setupCanvas();
+                this.initializeGame();
+                this.setupEventListeners();
+            }
+
+            setupCanvas() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+            }
+
+            initializeGame() {
+                this.stage = 1;
+                this.score = 0;
+                this.timeLeft = 30;
+                this.isDrawing = false;
+                this.gameStarted = false;
+                this.gameEnded = false;
+                this.stageFailed = false;
+                
+                this.centerX = this.canvas.width / 2;
+                this.centerY = this.canvas.height / 2;
+                
+                this.cameraOffsetX = 0;
+                this.cameraOffsetY = 0;
+                
+                this.path = [];
+                this.currentMouseX = 0;
+                this.currentMouseY = 0;
+                
+                this.leaderboards = {};
+                
+                this.resetStage();
+            }
+
+            resetStage() {
+                this.diameterCm = this.stage;
+                this.radius = this.diameterCm * 50;
+                this.dangerRadius = this.radius - 50;
+                this.outerGuideRadius = this.radius + 50;
+                
+                this.path = [];
+                this.timeLeft = 30;
+                this.gameEnded = false;
+                this.isDrawing = false;
+                this.stageFailed = false;
+                
+                this.cameraOffsetX = 0;
+                this.cameraOffsetY = 0;
+                
+                if (this.radius > Math.min(this.canvas.width, this.canvas.height) / 2) {
+                    const startPointY = this.centerY - this.radius;
+                    if (startPointY < 50) {
+                        this.cameraOffsetY = startPointY - 50;
+                    }
+                }
+                
+                this.updateDisplay();
+                this.draw();
+            }
+
+            setupEventListeners() {
+                if (currentPlatform === 'mobile') {
+                    this.canvas.addEventListener('touchstart', (e) => {
+                        e.preventDefault();
+                        this.startDrawing(e.touches[0]);
+                    });
+                    this.canvas.addEventListener('touchmove', (e) => {
+                        e.preventDefault();
+                        this.updateCursor(e.touches[0]);
+                    });
+                    this.canvas.addEventListener('touchend', (e) => {
+                        e.preventDefault();
+                        this.stopDrawing();
+                    });
+                    
+                    this.mobileCursor.style.display = 'block';
+                    this.cursor.style.display = 'none';
+                } else {
+                    this.canvas.addEventListener('mousedown', (e) => this.startDrawing(e));
+                    this.canvas.addEventListener('mousemove', (e) => this.updateCursor(e));
+                    this.canvas.addEventListener('mouseup', () => this.stopDrawing());
+                    
+                    this.cursor.style.display = 'block';
+                    this.mobileCursor.style.display = 'none';
+                }
+                
+                window.addEventListener('resize', () => this.setupCanvas());
+            }
+
+            updateCursor(e) {
+                const rect = this.canvas.getBoundingClientRect();
+                this.currentMouseX = e.clientX - rect.left;
+                this.currentMouseY = e.clientY - rect.top;
+                
+                const activeCursor = currentPlatform === 'mobile' ? this.mobileCursor : this.cursor;
+                activeCursor.style.left = e.clientX + 'px';
+                activeCursor.style.top = e.clientY + 'px';
+                
+                if (this.isDrawing) {
+                    this.addPoint(this.currentMouseX, this.currentMouseY);
+                    this.updateCamera();
+                }
+            }
+
+            startDrawing(e) {
+                if (!this.gameStarted || this.gameEnded) return;
+                
+                const rect = this.canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                const adjustedX = x + this.cameraOffsetX;
+                const adjustedY = y + this.cameraOffsetY;
+                const startAngle = Math.atan2(adjustedY - this.centerY, adjustedX - this.centerX);
+                const expectedStartAngle = -Math.PI / 2;
+                
+                const angletolerance = Math.min(0.5, 0.1 + this.stage * 0.02);
+                if (Math.abs(startAngle - expectedStartAngle) > angletolerance) {
+                    this.showMessage('Start from 12 o\'clock position!', 'fail');
+                    return;
+                }
+                
+                this.isDrawing = true;
+                this.path = [{x: adjustedX, y: adjustedY}];
+            }
+
+            addPoint(x, y) {
+                const adjustedX = x + this.cameraOffsetX;
+                const adjustedY = y + this.cameraOffsetY;
+                
+                const distanceFromCenter = Math.sqrt(
+                    Math.pow(adjustedX - this.centerX, 2) + 
+                    Math.pow(adjustedY - this.centerY, 2)
+                );
+                
+                if (distanceFromCenter < this.dangerRadius || distanceFromCenter > this.outerGuideRadius) {
+                    this.failStage();
+                    return;
+                }
+                
+                this.path.push({x: adjustedX, y: adjustedY});
+                this.draw();
+            }
+
+            updateCamera() {
+                if (this.radius > Math.min(this.canvas.width, this.canvas.height) / 2) {
+                    const margin = 100;
+                    const targetOffsetX = this.centerX - this.currentMouseX;
+                    const targetOffsetY = this.centerY - this.currentMouseY;
+                    
+                    const circleLeft = this.centerX - this.outerGuideRadius;
+                    const circleRight = this.centerX + this.outerGuideRadius;
+                    const circleTop = this.centerY - this.outerGuideRadius;
+                    const circleBottom = this.centerY + this.outerGuideRadius;
+                    
+                    const maxOffsetX = Math.max(0, circleRight - this.canvas.width + margin);
+                    const minOffsetX = Math.min(0, circleLeft - margin);
+                    const maxOffsetY = Math.max(0, circleBottom - this.canvas.height + margin);
+                    const minOffsetY = Math.min(0, circleTop - margin);
+                    
+                    const smoothFactor = 0.1;
+                    const newOffsetX = this.cameraOffsetX + (targetOffsetX - this.cameraOffsetX) * smoothFactor;
+                    const newOffsetY = this.cameraOffsetY + (targetOffsetY - this.cameraOffsetY) * smoothFactor;
+                    
+                    this.cameraOffsetX = Math.max(minOffsetX, Math.min(maxOffsetX, newOffsetX));
+                    this.cameraOffsetY = Math.max(minOffsetY, Math.min(maxOffsetY, newOffsetY));
+                }
+            }
+
+            stopDrawing() {
+                if (!this.isDrawing) return;
+                this.isDrawing = false;
+                
+                if (this.path.length > 10) {
+                    this.checkCircleCompletion();
+                }
+            }
+
+            checkCircleCompletion() {
+                if (this.path.length < 10) return;
+                
+                const firstPoint = this.path[0];
+                const lastPoint = this.path[this.path.length - 1];
+                const closingDistance = Math.sqrt(
+                    Math.pow(lastPoint.x - firstPoint.x, 2) + 
+                    Math.pow(lastPoint.y - firstPoint.y, 2)
+                );
+                
+                const closingTolerance = Math.min(100, 30 + this.stage * 5);
+                
+                if (closingDistance < closingTolerance) {
+                    this.calculateScore();
+                    this.completeStage();
+                }
+            }
+
+            calculateScore() {
+                const perfectCircumference = 2 * Math.PI * this.radius;
+                const drawnDistance = this.calculatePathDistance();
+                const distanceError = Math.abs(drawnDistance - perfectCircumference) / perfectCircumference;
+                
+                const angleError = this.calculateAngleError();
+                
+                let score = 10000;
+                score -= Math.floor(distanceError * 10000);
+                score -= Math.floor(angleError * 10000);
+                
+                this.score = Math.max(0, score);
+            }
+
+            calculatePathDistance() {
+                let distance = 0;
+                for (let i = 1; i < this.path.length; i++) {
+                    const dx = this.path[i].x - this.path[i-1].x;
+                    const dy = this.path[i].y - this.path[i-1].y;
+                    distance += Math.sqrt(dx * dx + dy * dy);
+                }
+                return distance;
+            }
+
+            calculateAngleError() {
+                const angles = [];
+                for (let i = 0; i < this.path.length; i++) {
+                    const point = this.path[i];
+                    const angle = Math.atan2(point.y - this.centerY, point.x - this.centerX);
+                    angles.push(angle);
+                }
+                
+                const minAngle = Math.min(...angles);
+                const maxAngle = Math.max(...angles);
+                const angleRange = maxAngle - minAngle;
+                const targetRange = 2 * Math.PI;
+                
+                return Math.abs(angleRange - targetRange) / targetRange;
+            }
+
+            completeStage() {
+                this.gameEnded = true;
+                this.showMessage('SUCCESS!!!', 'success');
+                setTimeout(() => {
+                    this.showScoreboard();
+                }, 1500);
+            }
+
+            failStage() {
+                this.gameEnded = true;
+                this.isDrawing = false;
+                this.stageFailed = true;
+                this.score = 0;
+                this.showMessage('FAIL!!!', 'fail');
+                setTimeout(() => {
+                    this.showScoreboard();
+                }, 1500);
+            }
+
+            showMessage(text, type) {
+                const message = document.getElementById('message');
+                message.textContent = text;
+                message.className = `message ${type}`;
+                message.style.opacity = '1';
+                
+                setTimeout(() => {
+                    message.style.opacity = '0';
+                }, 1500);
+            }
+
+            draw() {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                this.ctx.strokeStyle = '#ff0000';
+                this.ctx.lineWidth = 2;
+                this.ctx.beginPath();
+                this.ctx.arc(
+                    this.centerX - this.cameraOffsetX, 
+                    this.centerY - this.cameraOffsetY, 
+                    this.outerGuideRadius, 
+                    0, 2 * Math.PI
+                );
+                this.ctx.stroke();
+                
+                this.ctx.strokeStyle = '#ff0000';
+                this.ctx.lineWidth = 2;
+                this.ctx.beginPath();
+                this.ctx.arc(
+                    this.centerX - this.cameraOffsetX, 
+                    this.centerY - this.cameraOffsetY, 
+                    this.dangerRadius, 
+                    0, 2 * Math.PI
+                );
+                this.ctx.stroke();
+                
+                this.ctx.fillStyle = '#00ff00';
+                this.ctx.beginPath();
+                this.ctx.arc(
+                    this.centerX - this.cameraOffsetX, 
+                    this.centerY - this.radius - this.cameraOffsetY, 
+                    8, 0, 2 * Math.PI
+                );
+                this.ctx.fill();
+                
+                if (this.path.length > 1) {
+                    this.ctx.strokeStyle = '#0066cc';
+                    this.ctx.lineWidth = 4;
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(
+                        this.path[0].x - this.cameraOffsetX, 
+                        this.path[0].y - this.cameraOffsetY
+                    );
+                    
+                    for (let i = 1; i < this.path.length; i++) {
+                        this.ctx.lineTo(
+                            this.path[i].x - this.cameraOffsetX, 
+                            this.path[i].y - this.cameraOffsetY
+                        );
+                    }
+                    this.ctx.stroke();
+                }
+            }
+
+            startTimer() {
+                this.timerInterval = setInterval(() => {
+                    this.timeLeft--;
+                    document.getElementById('timer').textContent = this.timeLeft;
+                    
+                    if (this.timeLeft <= 0) {
+                        this.failStage();
+                    }
+                }, 1000);
+            }
+
+            stopTimer() {
+                if (this.timerInterval) {
+                    clearInterval(this.timerInterval);
+                }
+            }
+
+            updateDisplay() {
+                document.getElementById('stageDisplay').textContent = this.stage;
+                document.getElementById('diameterDisplay').textContent = this.diameterCm;
+                document.getElementById('scoreDisplay').textContent = this.score;
+                document.getElementById('timer').textContent = this.timeLeft;
+            }
+
+            showScoreboard() {
+                this.stopTimer();
+                
+                document.getElementById('finalStage').textContent = this.stage;
+                document.getElementById('finalScore').textContent = this.score;
+                
+                const nextButton = document.querySelector('.next-button');
+                if (this.stageFailed) {
+                    nextButton.style.display = 'none';
+                } else {
+                    nextButton.style.display = 'inline-block';
+                }
+                
+                this.updateLeaderboard();
+                document.getElementById('scoreboard').style.display = 'block';
+                
+                if (!this.stageFailed) {
+                    setTimeout(() => {
+                        if (document.getElementById('scoreboard').style.display === 'block') {
+                            this.nextStage();
+                        }
+                    }, 10000);
+                }
+            }
+
+            updateLeaderboard() {
+                const stageKey = `stage${this.stage}`;
+                if (!this.leaderboards[stageKey]) {
+                    this.leaderboards[stageKey] = [];
+                }
+                
+                const leaderboard = this.leaderboards[stageKey];
+                const isTopTen = leaderboard.length < 10 || this.score > leaderboard[leaderboard.length - 1].score;
+                
+                if (isTopTen) {
+                    document.getElementById('nameInput').style.display = 'block';
+                } else {
+                    document.getElementById('nameInput').style.display = 'none';
+                }
+                
+                this.displayLeaderboard(leaderboard);
+            }
+
+            displayLeaderboard(leaderboard) {
+                const leaderboardDiv = document.getElementById('leaderboard');
+                leaderboardDiv.innerHTML = '<h3>Top 10 Scores:</h3>';
+                
+                leaderboard.forEach((entry, index) => {
+                    const entryDiv = document.createElement('div');
+                    entryDiv.className = 'leaderboard-entry';
+                    entryDiv.innerHTML = `
+                        <span>${index + 1}. ${entry.name}</span>
+                        <span>${entry.score}</span>
+                    `;
+                    leaderboardDiv.appendChild(entryDiv);
+                });
+            }
+
+            saveName() {
+                const name = document.getElementById('playerName').value.trim() || 'Anonymous';
+                const stageKey = `stage${this.stage}`;
+                
+                this.leaderboards[stageKey].push({name, score: this.score});
+                this.leaderboards[stageKey].sort((a, b) => b.score - a.score);
+                this.leaderboards[stageKey] = this.leaderboards[stageKey].slice(0, 10);
+                
+                this.displayLeaderboard(this.leaderboards[stageKey]);
+                
+                document.getElementById('nameInput').style.display = 'none';
+            }
+
+            nextStage() {
+                document.getElementById('scoreboard').style.display = 'none';
+                this.stage++;
+                this.stageFailed = false;
+                this.resetStage();
+                this.startTimer();
+            }
+
+            exitGame() {
+                document.getElementById('scoreboard').style.display = 'none';
+                document.getElementById('startScreen').style.display = 'flex';
+                this.stopTimer();
+                this.initializeGame();
+            }
+
+            start() {
+                document.getElementById('startScreen').style.display = 'none';
+                this.gameStarted = true;
+                this.startTimer();
+                this.draw();
+            }
+        }
+
+        window.addEventListener('load', () => {
+            document.getElementById('platformSelection').style.display = 'flex';
+        });
+    </script>
+</body>
+</html>
